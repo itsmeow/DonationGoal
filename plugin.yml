@@ -1,0 +1,9 @@
+name: DonationGoal
+main: dev.itsmeow.donationgoal.DonationGoal
+version: 1.0.0
+api-version: 1.15
+depend: ['SimpleScoreboard']
+commands: 
+   donationgoal:
+      description: Base command for modifying donation goals
+      usage: /donationgoal
