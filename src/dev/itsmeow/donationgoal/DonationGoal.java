@@ -26,9 +26,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scoreboard.Scoreboard;
 
-import net.mrgregorix.plugins.api.simplescoreboard.SimpleScoreboard;
+import com.coloredcarrot.api.sidebar.Sidebar;
+import com.coloredcarrot.api.sidebar.SidebarString;
 
 public class DonationGoal extends JavaPlugin implements CommandExecutor, Listener {
 
@@ -55,14 +55,12 @@ public class DonationGoal extends JavaPlugin implements CommandExecutor, Listene
     };
     private static Stack<Runnable> queue = new Stack<Runnable>();
 
-    private static ArrayList<String> lines = new ArrayList<String>();
-
-    private static String scoreboardtitle;
-    
     private static int progressBarWidth;
     private static String progressBarBackColor;
     private static String progressBarFillColor;
     private static String donationText;
+
+    private static Sidebar sidebar;
 
     @Override
     public void onEnable() {
@@ -83,6 +81,7 @@ public class DonationGoal extends JavaPlugin implements CommandExecutor, Listene
         cfg.options().copyDefaults(true);
         this.saveConfig();
         this.loadConfig();
+        sidebar = new Sidebar(ChatColor.translateAlternateColorCodes('&', "&b&l&nDonation Goal"), this, 120, new SidebarString("Loading..."), new SidebarString("Loading..."), new SidebarString("Loading..."), new SidebarString("Loading..."));
         sql_thread.start();
         sql(() -> loadSQL(() -> {
             this.resetIfNeeded(this::updateSidebar);
@@ -122,10 +121,10 @@ public class DonationGoal extends JavaPlugin implements CommandExecutor, Listene
         execQuery("SELECT SUM(amount) FROM " + table + ";", result -> {
             result.next();
             double donations = result.getDouble(1);
-            final String line = (donations > goal ? "&5" : (donations == goal ? "&a" : "&c")) + "$" + donations;
-            final String line1 = "&7out of";
-            final String line2 = "&a$" + goal;
+            String color = (donations > goal ? "&5" : (donations == goal ? "&a" : "&c"));
+            final String line =  color + "$" + donations + " &7out of &a$" + goal;
             double rawfraction = donations / goal;
+            final String line1 = color + Math.floor(rawfraction * 100D) + "%";
             double fraction = Math.min(rawfraction, 1D);
             String line3temp = progressBarFillColor;
             for(int i = 0; i < Math.floor(fraction * ((double) progressBarWidth)); i++) {
@@ -135,66 +134,29 @@ public class DonationGoal extends JavaPlugin implements CommandExecutor, Listene
             for(int i = (int) Math.floor(fraction * ((double) progressBarWidth)) + 1; i <= ((double) progressBarWidth); i++) {
                 line3temp += "■";
             }
-            final String line3 = line3temp;
-            final String line4 = donationText;
-            final String title = "&b&l&nDonation Goal&r&a - " + Math.floor(rawfraction * 100D) + "%";
+            final String line2 = line3temp;
+            final String line3 = donationText;
             result.close();
             sync(() -> {
-                setTitle(title);
                 setLine(0, line);
                 setLine(1, line1);
                 setLine(2, line2);
                 setLine(3, line3);
-                setLine(4, line4);
+                sidebar.update();
                 Bukkit.getOnlinePlayers().stream().forEach(p -> {
                     if(!p.hasPermission("donationgoal.display")) {
-                        boolean update = false;
-                        Scoreboard scoreboard = p.getScoreboard();
-                        if(scoreboard == null) {
-                            scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
-                            update = true;
-                        }
-                        final SimpleScoreboard simpleScoreboard = SimpleScoreboard.of(scoreboard);
-                        simpleScoreboard.clearText(0);
-                        simpleScoreboard.clearText(1);
-                        simpleScoreboard.clearText(2);
-                        simpleScoreboard.clearText(3);
-                        simpleScoreboard.clearText(4);
-                        if(update) {
-                            p.setScoreboard(scoreboard);
-                        }
+                        sidebar.hideFrom(p);
                     } else {
-                        boolean update = false;
-                        Scoreboard scoreboard = p.getScoreboard();
-                        if(scoreboard == null) {
-                            scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
-                            update = true;
-                        }
-                        final SimpleScoreboard simpleScoreboard = SimpleScoreboard.of(scoreboard);
-                        simpleScoreboard.setTitle(ChatColor.translateAlternateColorCodes('&',scoreboardtitle));
-                        for(int i = 0; i < lines.size(); i++) {
-                            simpleScoreboard.setText(i, ChatColor.translateAlternateColorCodes('&', lines.get(i)));
-                        }
-                        if(update) {
-                            p.setScoreboard(scoreboard);
-                        }
+                        sidebar.showTo(p);
                     }
                 });
+                sidebar.update();
             });
         });
     }
 
     private static void setLine(int line, String text) {
-        lines.ensureCapacity(line + 1);
-        if(line >= lines.size()) {
-            lines.add(line, text);
-        } else {
-            lines.set(line, text);
-        }
-    }
-
-    private static void setTitle(String text) {
-        scoreboardtitle = text;
+        sidebar.getEntries().get(line).getVariations().set(0, text);
     }
 
     private void resetIfNeeded() {
