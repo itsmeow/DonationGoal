@@ -30,6 +30,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.coloredcarrot.api.sidebar.Sidebar;
 import com.coloredcarrot.api.sidebar.SidebarString;
 
+import kr.entree.spigradle.Plugin;
+
+@Plugin
 public class DonationGoal extends JavaPlugin implements CommandExecutor, Listener {
 
     private static Connection db;
@@ -108,13 +111,15 @@ public class DonationGoal extends JavaPlugin implements CommandExecutor, Listene
     private void scheduleMidnightTask() {
         ZonedDateTime nextTime = ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()).plusDays(1L).truncatedTo(ChronoUnit.DAYS);
         long delay = Duration.between(ZonedDateTime.now(), nextTime).getSeconds() * 20;
-        // run daily at midnight
-        getServer().getScheduler().runTaskLater(this, () -> {
-            // run task
-            resetIfNeeded();
-            // re-schedule
-            scheduleMidnightTask();
-        }, delay);
+        if(delay >= 1000) {
+            // run daily at midnight
+            getServer().getScheduler().runTaskLater(this, () -> {
+                // run task
+                resetIfNeeded();
+                // re-schedule
+                scheduleMidnightTask();
+            }, delay);
+        }
     }
 
     private void updateSidebar() {

@@ -1,0 +1,93 @@
+buildscript {
+    repositories {
+        jcenter()
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath 'kr.entree:spigradle:1.2.4'
+    }
+}
+apply plugin: 'kr.entree.spigradle'
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'maven-publish'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+compileJava.options.encoding = "UTF-8"
+
+group = project.maven_group
+version "${project.project_version}"
+archivesBaseName = project.project_name
+
+repositories {
+  mavenCentral()
+  flatDir {
+      dirs 'libs'
+  }
+}
+
+dependencies {
+  compileOnly spigot("${project.mc_version}")
+  compileOnly files("libs/SidebarAPI.jar")
+}
+
+spigot {
+  authors = ['itsmeow']
+  depends = ['SidebarAPI']
+  apiVersion = project.api_version
+  commands {
+    donationgoal {
+        description = "Base command for modifying donation goals"
+        usage = "/donationgoal"        
+    }
+  }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId project.group
+            artifactId project.archivesBaseName
+            version project.version
+            from components.java
+            pom {
+                name = project.project_name
+                url = project.url
+                packaging = 'jar'
+                scm {
+                    connection = "scm:git:git://github.com/" + project.github + ".git"
+                    developerConnection = "scm:git:git@github.com:" + project.github + ".git"
+                    url = "https://github.com/" + project.github
+                }
+                issueManagement {
+                    system = 'github'
+                    url = "https://github.com/" + project.github + ".git/issues"
+                }
+                organization {
+                    name = 'itsmeow Mods'
+                    url = 'https://itsmeow.dev/'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            if ((System.getenv("MAVEN_USER") != '') && (System.getenv("MAVEN_PASSWORD") != '')) {
+                credentials {
+                    username System.getenv("MAVEN_USER")
+                    password System.getenv("MAVEN_PASSWORD")
+                }
+            }
+            if (System.getenv("MAVEN_URL") != '') {
+                url System.getenv("MAVEN_URL")
+            } else {
+                url "file:///${project.buildDir}/repo"
+            }
+        }
+    }
+}
